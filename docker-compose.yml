@@ -1,0 +1,24 @@
+# Optional: spin up PostgreSQL for the backend.
+#   docker compose up -d
+# Then set in backend/.env:
+#   DATABASE_URL=postgresql+psycopg2://screening:screening@localhost:5432/screening
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: screening-postgres
+    environment:
+      POSTGRES_USER: screening
+      POSTGRES_PASSWORD: screening
+      POSTGRES_DB: screening
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U screening"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

@@ -1,0 +1,328 @@
+{
+  "info": {
+    "name": "Candidate Screening Platform API",
+    "description": "FastAPI backend for the candidate screening platform.\n\nSetup:\n1. Start the backend from backend/:  .\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --port 8000\n2. Seed demo data (optional):        .\\.venv\\Scripts\\python.exe seed.py\n3. Run 'Auth > Login (recruiter)' or 'Auth > Login (candidate)' first — each stores its JWT into a collection variable automatically.\n\nAuth model: bearer JWT. Requests inherit the {{token}} variable, which points at whichever role you logged in as last. Recruiter-only and candidate-only folders override it with {{recruiter_token}} / {{candidate_token}} so you can use both roles without re-logging in.\n\nDemo credentials (from seed.py):\n  recruiter@demo.com / password123\n  candidate@demo.com / password123",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "recruiter_token", "value": "", "type": "string" },
+    { "key": "candidate_token", "value": "", "type": "string" },
+    { "key": "job_id", "value": "1", "type": "string" },
+    { "key": "application_id", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/", "host": ["{{base_url}}"], "path": [""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (recruiter)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeded', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('token', body.access_token);",
+                  "pm.collectionVariables.set('recruiter_token', body.access_token);",
+                  "console.log('Logged in as', body.user.email, '(' + body.user.role + ')');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"recruiter@demo.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Returns { access_token, token_type, user }. Stores the JWT in {{token}} and {{recruiter_token}}."
+          }
+        },
+        {
+          "name": "Login (candidate)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeded', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('token', body.access_token);",
+                  "pm.collectionVariables.set('candidate_token', body.access_token);",
+                  "console.log('Logged in as', body.user.email, '(' + body.user.role + ')');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"candidate@demo.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"new.user@example.com\",\n  \"full_name\": \"New User\",\n  \"password\": \"password123\",\n  \"role\": \"candidate\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "role: \"recruiter\" | \"candidate\". password min length 6. Returns 409 if the email already exists."
+          }
+        },
+        {
+          "name": "Current user (/auth/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Uses whichever token was set last."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "List jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/jobs",
+              "host": ["{{base_url}}"],
+              "path": ["jobs"],
+              "query": [
+                { "key": "mine", "value": "true", "description": "Recruiters only: just my jobs", "disabled": true },
+                { "key": "status", "value": "open", "description": "open | closed (ignored for candidates)", "disabled": true },
+                { "key": "search", "value": "engineer", "description": "Case-insensitive title search", "disabled": true }
+              ]
+            },
+            "description": "Candidates only ever see open jobs. Enable the query params as needed."
+          }
+        },
+        {
+          "name": "Get job by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/jobs/{{job_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["jobs", "{{job_id}}"]
+            },
+            "description": "404 for candidates if the job is closed."
+          }
+        },
+        {
+          "name": "Create job (recruiter)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('job_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{recruiter_token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Platform Engineer\",\n  \"description\": \"Own our deployment tooling and CI pipelines.\",\n  \"location\": \"Remote\",\n  \"employment_type\": \"Full-time\",\n  \"salary_range\": \"$110k - $140k\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/jobs",
+              "host": ["{{base_url}}"],
+              "path": ["jobs"]
+            },
+            "description": "Recruiter role required (403 otherwise). Saves the new id into {{job_id}}. Only title and description are required."
+          }
+        },
+        {
+          "name": "Update job (recruiter, PATCH)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{recruiter_token}}", "type": "string" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Senior Platform Engineer\",\n  \"salary_range\": \"$130k - $165k\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/jobs/{{job_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["jobs", "{{job_id}}"]
+            },
+            "description": "Partial update — send only the fields you want changed. You can also set \"status\": \"open\" | \"closed\" here. 403 if you don't own the job."
+          }
+        },
+        {
+          "name": "Close job (recruiter)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{recruiter_token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/jobs/{{job_id}}/close",
+              "host": ["{{base_url}}"],
+              "path": ["jobs", "{{job_id}}", "close"]
+            },
+            "description": "No body. Sets status to closed. 403 if you don't own the job."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Applications",
+      "item": [
+        {
+          "name": "Apply to job (candidate)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('application_id', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{candidate_token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resume_url\": \"https://example.com/resumes/my-resume.pdf\",\n  \"cover_letter\": \"I would love to join the team.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/jobs/{{job_id}}/applications",
+              "host": ["{{base_url}}"],
+              "path": ["jobs", "{{job_id}}", "applications"]
+            },
+            "description": "Candidate role required. resume_url must be a valid URL. 400 if the job is closed, 409 if you already applied."
+          }
+        },
+        {
+          "name": "List applications for a job (recruiter)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{recruiter_token}}", "type": "string" }] },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/jobs/{{job_id}}/applications",
+              "host": ["{{base_url}}"],
+              "path": ["jobs", "{{job_id}}", "applications"]
+            },
+            "description": "Includes candidate details. 403 if you don't own the job."
+          }
+        },
+        {
+          "name": "My applications (candidate)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{candidate_token}}", "type": "string" }] },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/applications/me",
+              "host": ["{{base_url}}"],
+              "path": ["applications", "me"]
+            },
+            "description": "Includes a job summary for each application."
+          }
+        },
+        {
+          "name": "Update application status (recruiter)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{recruiter_token}}", "type": "string" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"interview\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/applications/{{application_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["applications", "{{application_id}}", "status"]
+            },
+            "description": "status: applied | screening | interview | rejected | hired. 403 if the application isn't for one of your jobs."
+          }
+        }
+      ]
+    }
+  ]
+}
